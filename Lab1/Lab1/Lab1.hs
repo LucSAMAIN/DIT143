@@ -41,9 +41,8 @@ power2 n k
 -- D -------------------------
 {- 
 <Describe your test cases here>
-   1) Get an error by passing a negative k value (not included in the powerTest function)
-   2) Edges cases n = 0 and k = 0, should output 0 and 1 respectively
-   3) Different values:
+   1) Edges cases n = 0 and k = 0, should output 0 and 1 respectively
+   2) Different values:
       3.a) n = 2 and k = 3 should output 8
       3.b) n = 7 and k = 2 should output 49
       3.c) n = 12 and k = 43 should output 25397652694505813866070015990659936347412758528
