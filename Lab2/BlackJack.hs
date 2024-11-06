@@ -67,3 +67,7 @@ value hand | score < 22 = score
            | otherwise = score
            where score = initialValue hand
                  nbAces = numberOfAces hand
+
+-- A3
+gameOver :: Hand -> Bool
+gameOver hand = value hand > 21
