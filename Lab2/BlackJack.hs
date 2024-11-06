@@ -71,3 +71,13 @@ value hand | score < 22 = score
 -- A3
 gameOver :: Hand -> Bool
 gameOver hand = value hand > 21
+
+-- A4
+-- See "2 - The game" to understand how the rules work here
+winner :: Hand -> Hand -> Player
+winner handGuest handBank | gameOver handGuest && gameOver handBank = Bank
+                          | gameOver handGuest = Bank
+                          | gameOver handBank = Guest
+                          -- None of the hands have value > 21
+                          | value handGuest > value handBank = Guest
+                          | otherwise = Bank -- if draw then bank wins anyway haha
