@@ -55,18 +55,15 @@ numberOfAces Empty = 0
 numberOfAces (Add (Card Ace _) h) = 1 + numberOfAces h
 numberOfAces (Add c h) = numberOfAces h 
 
--- Using the last two functions to compute the acutal value of the hand 
--- (depending of the 21 score)
+-- Using the last two functions to compute the actual value of the hand
+-- Adjusting value if it exceeds 21 and there are aces
 value :: Hand -> Integer
-value hand | score < 22 = score 
-            -- the score is too high, can we decrease it using aces?
-           | nbAces > 0 && (score-10) < 21 = score + (-10)
-           | nbAces > 1 && (score-20) < 22 = score + (-20)
-           | nbAces > 2 && (score-30) < 22 = score + (-30)
-           | nbAces > 3 && (score-40) < 22 = score + (-40)
-           | otherwise = score
-           where score = initialValue hand
-                 nbAces = numberOfAces hand
+value hand
+    | score <= 21 = score
+    | otherwise = score - 10 * min nbAces ((score - 21) `div` 10) -- guessing how much aces we should convert from 11 to 1
+    where 
+        score = initialValue hand
+        nbAces = numberOfAces hand
 
 -- A3
 gameOver :: Hand -> Bool
