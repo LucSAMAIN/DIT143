@@ -39,9 +39,9 @@ display (Add c h) = displayCard c ++ "\n" ++ display h
 -- Computing the value of a card (10 for higher cards, 11 for ace,  
 -- numeric value for the others)
 valueCard :: Card -> Integer
-valueCard (Card (Numeric n) s) = n
-valueCard (Card Ace s) = 11
-valueCard (Card r s) = 10
+valueCard (Card (Numeric n) _) = n
+valueCard (Card Ace _) = 11
+valueCard (Card _ _) = 10
 
 -- Recursively computing the value of a hand by computing 
 -- the value of each of its cards
@@ -53,7 +53,7 @@ initialValue (Add c h) = valueCard c + value h
 numberOfAces :: Hand -> Integer
 numberOfAces Empty = 0
 numberOfAces (Add (Card Ace _) h) = 1 + numberOfAces h
-numberOfAces (Add c h) = numberOfAces h 
+numberOfAces (Add _ h) = numberOfAces h 
 
 -- Using the last two functions to compute the actual value of the hand
 -- Adjusting value if it exceeds 21 and there are aces
