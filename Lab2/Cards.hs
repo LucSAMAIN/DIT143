@@ -35,27 +35,6 @@ size :: Num a => Hand -> a
 size Empty            = 0
 size (Add card hand)  = 1 + size hand
 
-display :: Hand -> String
-display Empty = ""
-display (Add card hand) = showCard card ++ "\n" ++ display hand
-
-showCard :: Card -> String
-showCard card = showRank (rank card) ++ " of " ++ showSuit (suit card)
-
-showRank :: Rank -> String
-showRank (Numeric n) = show n
-showRank Jack = "Jack"
-showRank Queen = "Queen"
-showRank King = "King"
-showRank Ace = "Ace"
-
-showSuit :: Suit -> String
-showSuit Hearts = "Hearts"
-showSuit Spades = "Spades"
-showSuit Diamonds = "Diamonds"
-showSuit Clubs = "Clubs"
-
-
 --------------------------------------------------------------------
 -- Functions below are to tell QuickCheck how to generate random cards
 -- We will see how to do this in week 4.
@@ -88,6 +67,3 @@ instance Arbitrary Hand where
 -- the number of files needed.)
 instance Arbitrary StdGen where
   arbitrary = mkStdGen <$> arbitrary
-
--- Us:
-hand2 = Add (Card (Numeric 2) Hearts) (Add (Card Jack Spades) Empty)
