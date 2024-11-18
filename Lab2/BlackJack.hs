@@ -7,6 +7,7 @@ import Test.QuickCheck
 import System.Random
 
 -- A0
+hand2 :: Hand
 hand2 = Add (Card (Numeric 2) Hearts)
             (Add (Card Jack Spades) Empty)
 sizeSteps :: [Integer]
@@ -17,6 +18,12 @@ sizeSteps = [ size hand2
             , 1 + 1 + size Empty
             , 1 + 1 + 0
             ,2]
+
+hand3 :: Hand
+hand4 :: Hand
+hand5 :: Hand
+hand6 :: Hand
+hand7 :: Hand
 
 hand3 = Add (Card Ace Spades) (Add (Card Ace Clubs) Empty)
 hand4 = Add (Card Ace Spades) (Add (Card Ace Clubs) (Add (Card Ace Hearts) Empty))
@@ -54,7 +61,7 @@ valueCard (Card _ _) = 10
 -- the value of each of its cards
 initialValue :: Hand -> Integer
 initialValue Empty = 0
-initialValue (Add c h) = valueCard c + value h
+initialValue (Add c h) = valueCard c + initialValue h
 
 -- Recursively computing the number of aces in a hand
 numberOfAces :: Hand -> Integer
@@ -67,7 +74,7 @@ numberOfAces (Add _ h) = numberOfAces h
 value :: Hand -> Integer
 value hand
     | score <= 21 = score
-    | otherwise = score - 10 * min nbAces ((score - 21) `div` 10) -- guessing how much aces we should convert from 11 to 1
+    | otherwise = score - 10 * nbAces
     where 
         score = initialValue hand
         nbAces = numberOfAces hand
