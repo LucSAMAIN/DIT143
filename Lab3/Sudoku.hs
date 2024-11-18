@@ -1,6 +1,7 @@
 module Sudoku where
 
 import Test.QuickCheck
+import Data.Char
 
 ------------------------------------------------------------------------------
 
@@ -42,16 +43,24 @@ allBlankSudoku = Sudoku (replicate 9 (replicate 9 Nothing))
 
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
+
+isValidCell :: Maybe Int -> Bool
+isValidCell Nothing  = True
+isValidCell (Just n) = n >= 1 && n <= 9
+
 isSudoku :: Sudoku -> Bool
-isSudoku = undefined
+isSudoku sud = 
+    length (rows sud) == 9 &&
+    all (\row -> length row == 9) (rows sud) && -- all is and a map
+    all isValidCell (concat (rows sud))
+
 
 -- * A3
 
 -- | isFilled sud checks if sud is completely filled in,
 -- i.e. there are no blanks
 isFilled :: Sudoku -> Bool
-isFilled = undefined
-
+isFilled sud = all (\cell -> cell /= Nothing) (concat (rows sud))
 ------------------------------------------------------------------------------
 
 -- * B1
@@ -59,14 +68,35 @@ isFilled = undefined
 -- | printSudoku sud prints a nice representation of the sudoku sud on
 -- the screen
 printSudoku :: Sudoku -> IO ()
-printSudoku = undefined
+printSudoku sud | length (rows sud) == 0 = putStr""
+printSudoku sud = putStr(concat (map printRow (rows sud)))
+  where printRow :: Row -> String 
+        printRow [] =  "\n"
+        printRow (Nothing:cells) =  "." ++ printRow cells 
+        printRow (Just n:cells) = show n ++ printRow cells
+
 
 -- * B2
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku = undefined
+readSudoku filePath = do
+  contents <- readFile filePath
+  let sudokuRows = map parseRow (lines contents)
+  let sudoku = Sudoku sudokuRows  -- a list of rows is a Sudoku !
+  if isSudoku sudoku              -- check the validity of the Sudoku
+    then return sudoku
+    else error "Program Error: Not a Sudoku!"
+
+parseRow :: String -> Row
+parseRow = map parseCell -- a list of cell is a row !
+
+parseCell :: Char -> Cell
+parseCell '.' = Nothing
+parseCell c   = Just (digitToInt c)
+
+
 
 ------------------------------------------------------------------------------
 
