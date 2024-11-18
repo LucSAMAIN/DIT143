@@ -34,15 +34,18 @@ hand7 = Add(Card King Spades) (Add (Card (Numeric 6) Hearts) Empty)
 -- A1
 -- Display a card depending on its rank
 displayCard :: Card -> String
-displayCard (Card (Numeric n) s)| s == Hearts =  show n ++ " \9829"
-                                | s == Spades =  show n ++ " \9824"
-                                | s == Diamonds =  show n ++ " \9830"
-                                | s == Clubs =  show n ++ " \9827"
+displayCard (Card rank suit) = rankString rank ++ " " ++ suitSymbol suit
 
-displayCard (Card r s)  | s == Hearts =  show r ++ " \9829"
-                        | s == Spades =  show r ++ " \9824"
-                        | s == Diamonds =  show r ++ " \9830"
-                        | s == Clubs =  show r ++ " \9827"
+rankString :: Rank -> String
+rankString (Numeric n) = show n
+rankString r           = show r  -- For Jack, Queen, King, Ace
+
+suitSymbol :: Suit -> String
+suitSymbol Hearts   = "\9829"
+suitSymbol Spades   = "\9824"
+suitSymbol Diamonds = "\9830"
+suitSymbol Clubs    = "\9827"
+
 
 -- Recusively displaying hand by displaying its cards
 display :: Hand -> String
