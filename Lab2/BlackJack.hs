@@ -3,7 +3,6 @@ module BlackJack where
 -- imports
 import Cards
 import RunGame
-import Test.QuickCheck
 import System.Random
 
 -- A0
@@ -127,7 +126,7 @@ fullDeck = suitHand Hearts <+ suitHand Spades <+ suitHand Diamonds <+ suitHand C
 -- B3
 draw :: Hand -> Hand -> (Hand,Hand)
 draw Empty _ = error "draw: The deck is empty."
-draw (Add c rest) h1 = (rest, (Add c h1))
+draw (Add c rest) h1 = (rest, Add c h1)
 
 -- B4
 playBankHelper :: Hand -> Hand -> Hand
@@ -143,7 +142,7 @@ removeNthCard :: Integer -> Hand -> (Hand, Card) -- takes nth card, deck and ret
 removeNthCard i deck    | i >= size deck = error "removeNthCard: index cannot be superior to the size of the deck."
                         | i < 0         = error "removeNthCard : index cannot be negative."
 removeNthCard i (Add c deck) | i == 0 = (deck, c)
-                             | otherwise = ((Add c newDeck), removedCard)
+                             | otherwise = (Add c newDeck, removedCard)
                             where (newDeck, removedCard) = removeNthCard (i-1) deck
 
 shuffleDeck :: StdGen -> Hand -> Hand
@@ -153,7 +152,7 @@ shuffleDeck g deck = shuffleHelper g deck Empty
 shuffleHelper :: StdGen -> Hand -> Hand -> Hand
 shuffleHelper _ Empty shuffled = shuffled 
 shuffleHelper g deck shuffled = 
-    let (index, g1) = randomR (0, (size deck) - 1) g  
+    let (index, g1) = randomR (0, size deck - 1) g  
         (newDeck, card) = removeNthCard index deck  
     in shuffleHelper g1 newDeck (Add card shuffled) 
 
@@ -168,10 +167,11 @@ prop_shuffle_sameCards :: StdGen -> Card -> Hand -> Bool
 prop_shuffle_sameCards g c h = c `belongsTo` h == c `belongsTo` shuffleDeck g h
 
 prop_size_shuffle :: StdGen -> Hand -> Bool -- to do
-prop_size_shuffle g deck = (size (shuffleDeck g deck)) == (size deck)
+prop_size_shuffle g deck = size (shuffleDeck g deck) == size deck
 
 
 -- B6
+implementation :: Interface
 implementation = Interface
   { iFullDeck = fullDeck
   , iValue    = value
