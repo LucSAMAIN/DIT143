@@ -139,6 +139,7 @@ playBank deck = playBankHelper deck Empty
 
 -- B5
 removeNthCard :: Integer -> Hand -> (Hand, Card) -- takes nth card, deck and returns (new deck, removed card)
+removeNthCard i Empty = error "removeNthCard: cannot remove a card from an empty deck"
 removeNthCard i deck    | i >= size deck = error "removeNthCard: index cannot be superior to the size of the deck."
                         | i < 0         = error "removeNthCard : index cannot be negative."
 removeNthCard i (Add c deck) | i == 0 = (deck, c)
