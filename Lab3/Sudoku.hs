@@ -3,7 +3,8 @@ module Sudoku where
 import Test.QuickCheck
 import Data.Char
 import Data.List
-
+import Data.Maybe (fromJust, maybeToList, listToMaybe, isJust)
+import Debug.Trace (traceShow)
 ------------------------------------------------------------------------------
 
 -- | Representation of sudoku puzzles (allows some junk)
@@ -168,41 +169,89 @@ isOkay sud = all isOkayBlock (transpose $ rows sud) && --column
 type Pos = (Int,Int)
 
 -- * E1
-
 blanks :: Sudoku -> [Pos]
-blanks = undefined
+blanks sud = [(row, col) | (row, rowVals) <- zip [0..8] (rows sud),
+                           (col, cell) <- zip [0..8] (rowVals),
+                           cell == Nothing]
+  
 
---prop_blanks_allBlanks :: ...
---prop_blanks_allBlanks =
+  
+
+prop_blanks_allBlanks :: Bool
+prop_blanks_allBlanks = length (blanks allBlankSudoku) == 9*9
 
 
 -- * E2
-
 (!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (i,y) = undefined
+xs !!= (i,y) = (take i xs) ++ [y] ++ (drop (i + 1) xs) 
 
---prop_bangBangEquals_correct :: ...
---prop_bangBangEquals_correct =
+prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Property
+prop_bangBangEquals_correct xs (i, y) =
+  (i >= 0 && i < length xs) ==>  -- To not manually handle out-of-bounds cases
+    updated !! i == y && -- correctly replaces the former value with the new one
+    length updated == length xs && -- maintains the same size
+    all (\j -> j == i || updated !! j == xs !! j) [0 .. length xs - 1] -- other elements remain unchanged
+  where 
+    updated = xs !!= (i, y)
 
 
 -- * E3
-
 update :: Sudoku -> Pos -> Cell -> Sudoku
-update = undefined
+update (Sudoku rows) (r, c) cell =
+    Sudoku (rows !!= (r, updatedRow))
+  where
+    updatedRow = (rows !! r) !!= (c, cell)
 
---prop_update_updated :: ...
---prop_update_updated =
+prop_update_updated :: Sudoku -> Pos -> Cell -> Bool
+prop_update_updated (Sudoku rows) (r, c) cell
+                   | (r < 0 || c < 0 || r >= length rows || c >= length rows) = True -- manually handle out-of-bounds cases
+                   | otherwise = (updatedRows !! r) !! c == cell 
+                      where (Sudoku updatedRows) = update (Sudoku rows) (r, c) cell
+
+
+
 
 
 ------------------------------------------------------------------------------
-
 -- * F1
+solve :: Sudoku -> Maybe Sudoku
+solve sudoku
+  | not (isSudoku sudoku && isOkay sudoku) = Nothing
+  | otherwise = listToMaybe (solve' sudoku (blanks sudoku))
+
+solve' :: Sudoku -> [Pos] -> [Sudoku]
+solve' sud [] 
+  | isOkay sud = [sud]
+  | otherwise  = []
+solve' sud (pos:positions) = concat [ solve' sud' positions
+  | x <- [1..9]
+  , let sud' = update sud pos (Just x)
+  , isOkay sud' ]
+
+      
 
 
 -- * F2
-
-
+readAndSolve :: FilePath -> IO ()
+readAndSolve file = do
+  sud <- readSudoku file
+  let res = solve sud
+  case res of
+    Just solvedSudoku -> printSudoku solvedSudoku
+    Nothing           -> putStrLn "(no solution)"
+  return ()
+  
 -- * F3
-
+isSolutionOf :: Sudoku -> Sudoku -> Bool
+isSolutionOf sud1 sud2 = isOkay sud1 && (length (blanks sud1) == 0) && allDigits
+  where allDigits = and [ (cell2 /= Nothing && cell1 == cell2) || cell2 == Nothing |
+                     row1 <- rows sud1, row2 <- rows sud2,
+                     cell1 <- row1, cell2 <- row2]
 
 -- * F4
+prop_SolveSound :: Sudoku -> Property
+prop_SolveSound sud = 
+  (isSudoku sud && isOkay sud) ==> case solve sud of
+    Just solvedSudoku -> solvedSudoku `isSolutionOf` sud
+    Nothing           -> False
+
