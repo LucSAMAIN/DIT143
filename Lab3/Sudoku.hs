@@ -243,10 +243,11 @@ readAndSolve file = do
   
 -- * F3
 isSolutionOf :: Sudoku -> Sudoku -> Bool
-isSolutionOf sud1 sud2 = isOkay sud1 && (length (blanks sud1) == 0) && allDigits
-  where allDigits = and [ (cell2 /= Nothing && cell1 == cell2) || cell2 == Nothing |
-                     row1 <- rows sud1, row2 <- rows sud2,
-                     cell1 <- row1, cell2 <- row2]
+isSolutionOf sud1 sud2 = isOkay sud1 && null (blanks sud1) && allRowsMatch
+  where
+    allRowsMatch = and [ allCellsMatch row1 row2 | (row1, row2) <- zip (rows sud1) (rows sud2) ]
+    allCellsMatch r1 r2 = and [ (cell2 == Nothing || cell1 == cell2) | (cell1, cell2) <- zip r1 r2 ]
+
 
 -- * F4
 prop_SolveSound :: Sudoku -> Property
