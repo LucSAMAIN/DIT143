@@ -185,7 +185,7 @@ prop_blanks_allBlanks = length (blanks allBlankSudoku) == 9*9
 (!!=) :: [a] -> (Int,a) -> [a]
 xs !!= (i,y) = (take i xs) ++ [y] ++ (drop (i + 1) xs) 
 
-prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Property
+prop_bangBangEquals_correct :: [Int] -> (Int, Int) -> Property
 prop_bangBangEquals_correct xs (i, y) =
   (i >= 0 && i < length xs) ==>  -- To not manually handle out-of-bounds cases
     updated !! i == y && -- correctly replaces the former value with the new one
