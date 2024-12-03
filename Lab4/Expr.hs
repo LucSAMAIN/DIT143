@@ -1,4 +1,6 @@
 import Parsing
+import Data.Maybe (fromJust)
+import Test.QuickCheck
 
 
 
@@ -10,10 +12,10 @@ data Expr
   | Sin Expr           -- Sinus
   | Cos Expr           -- Cosinus
   | X                  -- Variable "x"
-  deriving (Eq)
+  deriving (Eq, Show)
 
-instance Show Expr where
-  show = showExpr
+-- instance Show Expr where
+--   show = showExpr
 
 -- Simple functions to construct exprs
 x :: Expr
@@ -70,38 +72,61 @@ eval (Mul e1 e2) xvalue = (eval e1 xvalue) * (eval e2 xvalue)
 -- D see videos from lecture 5A https://play.chalmers.se/playlist/dedicated/0_yeq243xj/0_jhls3bna
 readExpr :: String -> Maybe Expr
 readExpr s = case parse exprParser s of
-    Just (e, "") -> Just e  -- Successfully parsed the entire input
-    _            -> Nothing  -- Parsing failed or didn't consume the full input
+    Just (e, "") -> Just e 
+    _            -> Nothing  
 
--- Parser for `Expr`
-exprParser :: Parser Expr
-exprParser = chain termParser (char '+' *> pure Add)
 
--- Parser for terms (multiplication has higher precedence than addition)
-termParser :: Parser Expr
-termParser = chain factorParser (char '*' *> pure Mul)
+{- EBNF
+expr = set of term linked by +
+term = set of factor linked by *
+factor = (expr)
 
--- Parser for factors (parentheses, numbers, variables, sin, cos)
-factorParser :: Parser Expr
+==> it is recursive
+-}
+
+exprParser, termParser, factorParser :: Parser Expr
+exprParser = foldr1 add <$> chain termParser (char '+')
+termParser = foldr1 mul <$> chain factorParser (char '*')
 factorParser =
-      (char '(' *> exprParser <* char ')')  -- Parentheses
-  <|> (Num <$> readsP)                      -- Numbers
-  <|> (char 'x' *> pure X)                  -- Variable "x"
-  <|> (char 's' *> char 'i' *> char 'n' *> char '(' *> (Sin <$> exprParser) <* char ')')  -- sin(e)
-  <|> (char 'c' *> char 'o' *> char 's' *> char '(' *> (Cos <$> exprParser) <* char ')')  -- cos(e)
+      (char '(' *> exprParser <* char ')')  -- Parentheses <*> is used for ordering parsers and having a resulting one combining all the ops
+  <|> (num <$> readsP)                      -- Numbers
+  <|> (pure x <$> (char 'x'))               -- Variable "x"
+  <|> (char 's' *> char 'i' *> char 'n' *> char '(' *> (sinC <$> exprParser) <* char ')')  -- sin(e)
+  <|> (char 'c' *> char 'o' *> char 's' *> char '(' *> (cosC <$> exprParser) <* char ')')  -- cos(e)
 
--- Helper function for chaining terms (e.g., a*b*c)
-chain :: Parser a -> Parser (a -> a -> a) -> Parser a
-chain p op = p >*> rest
+
+-- E
+arbExpr :: Int -> Gen Expr -- defining the gen
+arbExpr s = frequency [(1,rNum), (1, rX), (s, rBin)]
   where
-    rest x = (op >*> \f -> p >*> \y -> rest (f x y)) +++ pure x
+    range = 100
+    rNum = num <$> choose(-range,range)
+    rX = do return x -- so the type is Gen Expr
+    -- ADD & MUL !! this is where things can go bad (s limit)
+    rBin = do
+      op <- elements [Add,Mul]
+      e1 <- arbExpr $ s `div` 2
+      e2 <- arbExpr $ s `div` 2
+      return $ e1 `op` e2
+
+instance Arbitrary Expr where -- making the type compatible remind that the 'instance' keyword is for type classes
+  arbitrary = sized arbExpr
+
+prop_ShowReadExpr :: Expr -> Bool
+prop_ShowReadExpr e = 
+     (fromJust (readExpr (showExpr e)) == e) 
+  || (fromJust (readExpr (showExpr $ e)) == assoc e) 
 
 
-
-
-
-
-
+assoc :: Expr -> Expr
+assoc (Add (Add e1 e2) e3) = assoc (Add (assoc e1) (assoc (Add e2 e3)))
+assoc (Add e1 e2) = Add (assoc e1) (assoc e2)
+assoc (Sin e) = Sin (assoc e)
+assoc (Cos e) = Cos (assoc e)
+assoc (Mul (Mul e1 e2) e3) = assoc (Mul (assoc e1) (assoc (Mul e2 e3)))
+assoc (Mul e1 e2) = Mul (assoc e1) (assoc e2)
+assoc (Num n) = Num n
+assoc (X) = X
 
 
 
