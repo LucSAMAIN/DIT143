@@ -3,8 +3,7 @@ module Sudoku where
 import Test.QuickCheck
 import Data.Char
 import Data.List
-import Data.Maybe (fromJust, maybeToList, listToMaybe, isJust)
-import Debug.Trace (traceShow)
+import Data.Maybe (listToMaybe, isNothing, fromJust)
 ------------------------------------------------------------------------------
 
 -- | Representation of sudoku puzzles (allows some junk)
@@ -137,7 +136,7 @@ isOkayBlock myList = length (nub $ filter (/= Nothing) myList)
 
 -- * D2
 blocks :: Sudoku -> [Block]
-blocks sud = getSquares (rows sud)
+blocks sud = rows sud ++ transpose (rows sud) ++ getSquares (rows sud)
 
 -- Helper function to extract 3x3 sub-grids
 getSquares :: [Row] -> [Block]
@@ -145,17 +144,16 @@ getSquares rows =
   [concat [take 3 (drop c row) | row <- take 3 (drop r rows)] | r <- [0, 3, 6], c <- [0, 3, 6]]
 
 prop_blocks_lengths :: Sudoku -> Bool
-prop_blocks_lengths sud =  (length blocksSud) == 9 && all (\row -> length row == 9) blocksSud
-                  where blocksSud = blocks sud
-
+prop_blocks_lengths sud = 
+  (length blocksSud) == 27 && all (\row -> length row == 9) blocksSud
+  where blocksSud = blocks sud
 
 -- * D3
-
-isOkay :: Sudoku -> Bool -- block is alias for list of cell which is an alias for maybe int so usable for everything
-isOkay sud = all isOkayBlock (transpose $ rows sud) && --column
-             all isOkayBlock (rows sud) && --rows
-             all isOkayBlock (blocks sud) -- blokcs
+isOkay :: Sudoku -> Bool
+isOkay sud = all isOkayBlock (blocks sud)
   
+  
+
   
 
 
@@ -171,8 +169,8 @@ type Pos = (Int,Int)
 -- * E1
 blanks :: Sudoku -> [Pos]
 blanks sud = [(row, col) | (row, rowVals) <- zip [0..8] (rows sud),
-                           (col, cell) <- zip [0..8] (rowVals),
-                           cell == Nothing]
+                           (col, cell) <- zip [0..8] rowVals,
+                           isNothing cell]
   
 
   
@@ -183,7 +181,7 @@ prop_blanks_allBlanks = length (blanks allBlankSudoku) == 9*9
 
 -- * E2
 (!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (i,y) = (take i xs) ++ [y] ++ (drop (i + 1) xs) 
+xs !!= (i,y) = take i xs ++ [y] ++ drop (i + 1) xs
 
 prop_bangBangEquals_correct :: [Int] -> (Int, Int) -> Property
 prop_bangBangEquals_correct xs (i, y) =
@@ -195,6 +193,7 @@ prop_bangBangEquals_correct xs (i, y) =
     updated = xs !!= (i, y)
 
 
+
 -- * E3
 update :: Sudoku -> Pos -> Cell -> Sudoku
 update (Sudoku rows) (r, c) cell =
@@ -204,7 +203,7 @@ update (Sudoku rows) (r, c) cell =
 
 prop_update_updated :: Sudoku -> Pos -> Cell -> Bool
 prop_update_updated (Sudoku rows) (r, c) cell
-                   | (r < 0 || c < 0 || r >= length rows || c >= length rows) = True -- manually handle out-of-bounds cases
+                   | r < 0 || c < 0 || r >= length rows || c >= length rows = True -- manually handle out-of-bounds cases
                    | otherwise = (updatedRows !! r) !! c == cell 
                       where (Sudoku updatedRows) = update (Sudoku rows) (r, c) cell
 
@@ -246,7 +245,7 @@ isSolutionOf :: Sudoku -> Sudoku -> Bool
 isSolutionOf sud1 sud2 = isOkay sud1 && null (blanks sud1) && allRowsMatch
   where
     allRowsMatch = and [ allCellsMatch row1 row2 | (row1, row2) <- zip (rows sud1) (rows sud2) ]
-    allCellsMatch r1 r2 = and [ (cell2 == Nothing || cell1 == cell2) | (cell1, cell2) <- zip r1 r2 ]
+    allCellsMatch r1 r2 = and [isNothing cell2 || cell1 == cell2 | (cell1, cell2) <- zip r1 r2]
 
 
 -- * F4
@@ -255,4 +254,3 @@ prop_SolveSound sud =
   (isSudoku sud && isOkay sud) ==> case solve sud of
     Just solvedSudoku -> solvedSudoku `isSolutionOf` sud
     Nothing           -> False
-
