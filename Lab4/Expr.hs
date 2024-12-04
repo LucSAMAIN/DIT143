@@ -17,7 +17,10 @@ data Expr
   | Sin Expr           -- Sinus
   | Cos Expr           -- Cosinus
   | X                  -- Variable "x"
-  deriving (Eq, Show)
+  deriving (Show, Eq)
+
+
+
 
 -- instance Show Expr where
 --   show = showExpr
@@ -27,23 +30,23 @@ x :: Expr
 x = X
 
 num :: Double -> Expr
-num dValue = Num dValue
+num = Num
 
 add :: Expr -> Expr -> Expr
-add e1 e2 = Add e1 e2
+add = Add
 
 mul :: Expr -> Expr -> Expr
-mul e1 e2 = Mul e1 e2
+mul = Mul
 
 sin :: Expr -> Expr
-sin e = Sin e
+sin = Sin
 
 cos :: Expr -> Expr -- C stands for constructor handle name issue with our functions
-cos e = Cos e
+cos = Cos
 
 size :: Expr -> Integer
 size (Num value) = 0
-size (X) = 0
+size X = 0
 size (Sin e) = 1 + size e
 size (Cos e) = 1 + size e
 size (Add e1 e2) = 1 + size e1 + size e2
@@ -54,30 +57,45 @@ size (Mul e1 e2) = 1 + size e1 + size e2
 -- B
 showExpr :: Expr -> String
 showExpr (Num value) = show value
-showExpr (X) = "x"
-showExpr (Sin e) = "sin(" ++ showExpr e ++ ")" 
-showExpr (Cos e) = "cos(" ++ showExpr e ++ ")" 
+showExpr X = "x"
+showExpr (Sin e) = "sin" ++ showParensIfNeeded e
+showExpr (Cos e) = "cos" ++ showParensIfNeeded e
 showExpr (Add e1 e2) = showExpr e1 ++ "+" ++ showExpr e2
-showExpr (Mul e1 e2) = showFactor e1 ++ "*" ++ showFactor e2 -- to deal with the ()
-  where showFactor (Add e1 e2) = "(" ++ showExpr e1 ++ "+" ++ showExpr e2 ++ ")"
-        showFactor e = showExpr e
+showExpr (Mul e1 e2) = showFactor e1 ++ "*" ++ showFactor e2
+
+-- Helper function to add parentheses for arguments when needed
+showParensIfNeeded :: Expr -> String
+showParensIfNeeded (Add e1 e2) = "(" ++ showExpr (Add e1 e2) ++ ")"  -- Parentheses required for `Add`
+showParensIfNeeded (Mul e1 e2) = "(" ++ showExpr (Mul e1 e2) ++ ")"  -- Parentheses required for `Mul`
+showParensIfNeeded e = " " ++ showExpr e                             -- No parentheses for single terms
+
+-- Helper function for multiplication arguments
+showFactor :: Expr -> String
+showFactor (Add e1 e2) = "(" ++ showExpr e1 ++ "+" ++ showExpr e2 ++ ")"
+showFactor e = showExpr e
+
+
+
+
+
+
 
 
 -- C
 eval :: Expr -> Double -> Double
 eval (Num value) _ = value
-eval (X) xvalue = xvalue
+eval X xvalue = xvalue
 eval (Sin e) xvalue = P.sin $ eval e xvalue
 eval (Cos e) xvalue = P.cos $ eval e xvalue
-eval (Add e1 e2) xvalue = (eval e1 xvalue) + (eval e2 xvalue)
-eval (Mul e1 e2) xvalue = (eval e1 xvalue) * (eval e2 xvalue)
+eval (Add e1 e2) xvalue = (eval e1 xvalue) + eval e2 xvalue
+eval (Mul e1 e2) xvalue = eval e1 xvalue * (eval e2 xvalue)
 
 
 
 -- D see videos from lecture 5A https://play.chalmers.se/playlist/dedicated/0_yeq243xj/0_jhls3bna
 readExpr :: String -> Maybe Expr
 readExpr s = case parse exprParser s of
-    Just (e, "") -> Just e 
+    Just (e, "") -> Just (assoc e) 
     _            -> Nothing  
 
 
@@ -95,7 +113,7 @@ termParser = foldr1 mul <$> chain factorParser (char '*')
 factorParser =
       (char '(' *> exprParser <* char ')')  -- Parentheses <*> is used for ordering parsers and having a resulting one combining all the ops
   <|> (num <$> readsP)                      -- Numbers
-  <|> (pure x <$> (char 'x'))               -- Variable "x"
+  <|> (pure x <$> char 'x')               -- Variable "x"
   <|> (char 's' *> char 'i' *> char 'n' *> char '(' *> (sin <$> exprParser) <* char ')')  -- sin(e)
   <|> (char 'c' *> char 'o' *> char 's' *> char '(' *> (cos <$> exprParser) <* char ')')  -- cos(e)
 
@@ -120,7 +138,7 @@ instance Arbitrary Expr where -- making the type compatible remind that the 'ins
 prop_ShowReadExpr :: Expr -> Bool
 prop_ShowReadExpr e = 
      (fromJust (readExpr (showExpr e)) == e) 
-  || (fromJust (readExpr (showExpr $ e)) == assoc e) 
+  || (fromJust (readExpr (showExpr e)) == assoc e) 
 
 
 assoc :: Expr -> Expr
@@ -131,34 +149,46 @@ assoc (Cos e) = Cos (assoc e)
 assoc (Mul (Mul e1 e2) e3) = assoc (Mul (assoc e1) (assoc (Mul e2 e3)))
 assoc (Mul e1 e2) = Mul (assoc e1) (assoc e2)
 assoc (Num n) = Num n
-assoc (X) = X
+assoc X = X
+
+
+
+
 
 
 
 -- F
 simplify :: Expr -> Expr
-simplify (Add e1 e2) 
-    | simplifiedE1 == (Num 0) && simplifiedE2 == (Num 0) = (Num 0)
-    | simplifiedE1 == (Num 0)                            = simplifiedE2
-    | simplifiedE2 == (Num 0)                            = simplifiedE1
-    | otherwise                                          = simplifiedE1 `add` 
-                                                           simplifiedE2
-  where simplifiedE1 = simplify e1
-        simplifiedE2 = simplify e2
+simplify (Add e1 e2) =
+    case (simplify e1, simplify e2) of
+      (Num v1, Num v2)             -> Num (v1 + v2) 
+      (Num 0, simplifiedE2)        -> simplifiedE2 
+      (simplifiedE1, Num 0)        -> simplifiedE1  
+      (simplifiedE1, simplifiedE2) -> Add simplifiedE1 simplifiedE2 -- otherwise
 
-simplify (Mul e1 e2)
-    | simplifiedE1 == (Num 0) || simplifiedE2 == (Num 0) = (Num 0)
-    | simplifiedE1 == (Num 1)                            = simplifiedE2
-    | simplifiedE2 == (Num 1)                            = simplifiedE1
-    | otherwise                                          = simplifiedE1 `mul` 
-                                                           simplifiedE2
-  where simplifiedE1 = simplify e1
-        simplifiedE2 = simplify e2
 
-simplify (Sin e) = Sin (simplify e)
-simplify (Cos e) = Cos (simplify e)
+simplify (Mul e1 e2) =
+    case (simplify e1, simplify e2) of
+      (Num v1, Num v2)      -> Num (v1 * v2)
+      (Num 0, _)            -> Num 0 
+      (_, Num 0)            -> Num 0 
+      (Num 1, simplifiedE2) -> simplifiedE2 
+      (simplifiedE1, Num 1) -> simplifiedE1   
+      (simplifiedE1, simplifiedE2) -> Mul simplifiedE1 simplifiedE2 -- otherwise
+
+
+simplify (Sin e) =
+    case simplify e of
+        Num v -> Num (P.sin v)  -- If the simplified expression is a number, compute the sine
+        simplifiedE -> Sin simplifiedE  -- Otherwise, keep it as Sin with the simplified expression
+
+simplify (Cos e) =
+    case simplify e of
+        Num v -> Num (P.cos v)  
+        simplifiedE -> Cos simplifiedE  
+
 simplify (Num v) = (Num v)
-simplify (X)     = (X)
+simplify X     = X
 
 -- Simplification correctness property
 prop_simplify_correctness :: Expr -> Double -> Bool
@@ -167,20 +197,23 @@ prop_simplify_correctness expr xVal =
 
 -- Helper function to validate that an expression is fully simplified
 isSimplified :: Expr -> Bool
-isSimplified (Add (Num 0) _) = False  -- No addition with 0
-isSimplified (Add _ (Num 0)) = False  -- No addition with 0
-isSimplified (Mul (Num 0) _) = False  -- No multiplication by 0
-isSimplified (Mul _ (Num 0)) = False  -- No multiplication by 0
-isSimplified (Mul (Num 1) _) = False  -- No multiplication by 1
-isSimplified (Mul _ (Num 1)) = False  -- No multiplication by 0
-isSimplified (Sin (Num _))   = False  -- No sin(num)
-isSimplified (Cos (Num _))   = False  -- No cos(num)
+isSimplified (Add (Num _) (Num _)) = False  -- Addition of two numbers should be simplified
+isSimplified (Mul (Num _) (Num _)) = False  -- Multiplication of two numbers should be simplified
+isSimplified (Add (Num 0) _) = False       -- No addition with 0
+isSimplified (Add _ (Num 0)) = False       -- No addition with 0
+isSimplified (Mul (Num 0) _) = False       -- No multiplication by 0
+isSimplified (Mul _ (Num 0)) = False       -- No multiplication by 0
+isSimplified (Mul (Num 1) _) = False       -- No multiplication by 1
+isSimplified (Mul _ (Num 1)) = False       -- No multiplication by 1
+isSimplified (Sin (Num _))   = False       -- No sin(num)
+isSimplified (Cos (Num _))   = False       -- No cos(num)
 isSimplified (Add e1 e2)     = isSimplified e1 && isSimplified e2
 isSimplified (Mul e1 e2)     = isSimplified e1 && isSimplified e2
 isSimplified (Sin e)         = isSimplified e
 isSimplified (Cos e)         = isSimplified e
-isSimplified (Num _)         = True   -- Numeric constants are fine
-isSimplified X               = True   -- Variable is fine
+isSimplified (Num _)         = True        -- Numeric constants are fine
+isSimplified X               = True        -- Variable is fine
+
 
 -- Simplified expressions should have no redundancies
 prop_simplify_no_redundancies :: Expr -> Bool
@@ -197,13 +230,13 @@ differentiate :: Expr -> Expr
 differentiate e =  simplify $ differentiateCompute e
 
 differentiateCompute :: Expr -> Expr
-differentiateCompute (Add e1 e2) = ((differentiate e1) `add` (differentiate e2))
-differentiateCompute (Mul e1 e2) = (((differentiate e1) `mul` e2) `add` 
-                                 (e1 `mul` (differentiate e2)))
+differentiateCompute (Add e1 e2) = (differentiate e1) `add` (differentiate e2)
+differentiateCompute (Mul e1 e2) = ((differentiate e1) `mul` e2) `add` 
+                                 (e1 `mul` (differentiate e2))
 differentiateCompute (Sin e)     = ((differentiate e) `mul` (Cos e))
-differentiateCompute (Cos e)     = (((differentiate e) `mul` (Sin e)) `mul` (Num (-1.0)))
+differentiateCompute (Cos e)     = (differentiate e) `mul` ((Num (-1.0)) `mul` (Sin e))
 differentiateCompute (Num v)     = (Num 0)
-differentiateCompute (X)         = (Num 1)
+differentiateCompute X           = (Num 1)
 
 
 
