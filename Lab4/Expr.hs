@@ -1,3 +1,8 @@
+module Expr where
+
+
+import Prelude hiding (sin, cos) -- Hides sin and cos from unqualified usage
+import qualified Prelude as P   -- Allows using P.sin and P.cos explicitly
 import Parsing
 import Data.Maybe (fromJust)
 import Test.QuickCheck
@@ -30,11 +35,11 @@ add e1 e2 = Add e1 e2
 mul :: Expr -> Expr -> Expr
 mul e1 e2 = Mul e1 e2
 
-sinC :: Expr -> Expr
-sinC e = Sin e
+sin :: Expr -> Expr
+sin e = Sin e
 
-cosC :: Expr -> Expr -- C stands for constructor handle name issue with our functions
-cosC e = Cos e
+cos :: Expr -> Expr -- C stands for constructor handle name issue with our functions
+cos e = Cos e
 
 size :: Expr -> Integer
 size (Num value) = 0
@@ -62,8 +67,8 @@ showExpr (Mul e1 e2) = showFactor e1 ++ "*" ++ showFactor e2 -- to deal with the
 eval :: Expr -> Double -> Double
 eval (Num value) _ = value
 eval (X) xvalue = xvalue
-eval (Sin e) xvalue = sin $ eval e xvalue
-eval (Cos e) xvalue = cos $ eval e xvalue
+eval (Sin e) xvalue = P.sin $ eval e xvalue
+eval (Cos e) xvalue = P.cos $ eval e xvalue
 eval (Add e1 e2) xvalue = (eval e1 xvalue) + (eval e2 xvalue)
 eval (Mul e1 e2) xvalue = (eval e1 xvalue) * (eval e2 xvalue)
 
@@ -91,8 +96,8 @@ factorParser =
       (char '(' *> exprParser <* char ')')  -- Parentheses <*> is used for ordering parsers and having a resulting one combining all the ops
   <|> (num <$> readsP)                      -- Numbers
   <|> (pure x <$> (char 'x'))               -- Variable "x"
-  <|> (char 's' *> char 'i' *> char 'n' *> char '(' *> (sinC <$> exprParser) <* char ')')  -- sin(e)
-  <|> (char 'c' *> char 'o' *> char 's' *> char '(' *> (cosC <$> exprParser) <* char ')')  -- cos(e)
+  <|> (char 's' *> char 'i' *> char 'n' *> char '(' *> (sin <$> exprParser) <* char ')')  -- sin(e)
+  <|> (char 'c' *> char 'o' *> char 's' *> char '(' *> (cos <$> exprParser) <* char ')')  -- cos(e)
 
 
 -- E
@@ -207,25 +212,25 @@ differentiateCompute (X)         = (Num 1)
 
   
 
--- tests : 
-ex1 = cosC (sinC (x `add` (num 3.0)))
-ex2 = ((num 3) `add` (num 4)) `mul` (num 10)
-ex3 = (num 1) `mul` (num 2)
+-- -- tests : 
+-- ex1 = cos (sin (x `add` (num 3.0)))
+-- ex2 = ((num 3) `add` (num 4)) `mul` (num 10)
+-- ex3 = (num 1) `mul` (num 2)
 
--- tests for simplify:
-exs :: [Expr]
-exs = [ (num 1) `mul` (num 0),             -- 0
-        (num 0) `mul` (num 2),             -- 0
-        (num 1) `add` (num 0),             -- 1
-        (num 0) `add` (num 1),             -- 1
-        (num 3) `mul` (num 4),             -- itself
-        (num 0) `add` (num 0),             -- 0
-        (x `add` (num 0)),                 -- itself
-        (num 0) `mul` x,                   -- 0
-        sinC (num 0),                      -- Sine of zero (result should remain sinC (num 0) unless further simplifications are defined)
-        cosC (num 0),                      -- Cosine of zero (result should remain cosC (num 0) unless further simplifications are defined)
-        (x `add` (num 2)) `mul` (num 0),   -- Multiplication of an expression by zero (result should be 0)
-        sinC (x `add` (num 0)),             -- Sine of an addition with zero (result should simplify the addition first)
-        sinC (num (15.3)),
-        cosC (num (15.3))
-      ]
+-- -- tests for simplify:
+-- exs :: [Expr]
+-- exs = [ (num 1) `mul` (num 0),             -- 0
+--         (num 0) `mul` (num 2),             -- 0
+--         (num 1) `add` (num 0),             -- 1
+--         (num 0) `add` (num 1),             -- 1
+--         (num 3) `mul` (num 4),             -- itself
+--         (num 0) `add` (num 0),             -- 0
+--         (x `add` (num 0)),                 -- itself
+--         (num 0) `mul` x,                   -- 0
+--         sin (num 0),                      -- Sine of zero (result should remain sin (num 0) unless further simplifications are defined)
+--         cos (num 0),                      -- Cosine of zero (result should remain cos (num 0) unless further simplifications are defined)
+--         (x `add` (num 2)) `mul` (num 0),   -- Multiplication of an expression by zero (result should be 0)
+--         sin (x `add` (num 0)),             -- Sine of an addition with zero (result should simplify the addition first)
+--         sin (num (15.3)),
+--         cos (num (15.3))
+--       ]
