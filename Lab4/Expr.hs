@@ -130,8 +130,102 @@ assoc (X) = X
 
 
 
+-- F
+simplify :: Expr -> Expr
+simplify (Add e1 e2) 
+    | simplifiedE1 == (Num 0) && simplifiedE2 == (Num 0) = (Num 0)
+    | simplifiedE1 == (Num 0)                            = simplifiedE2
+    | simplifiedE2 == (Num 0)                            = simplifiedE1
+    | otherwise                                          = simplifiedE1 `add` 
+                                                           simplifiedE2
+  where simplifiedE1 = simplify e1
+        simplifiedE2 = simplify e2
+
+simplify (Mul e1 e2)
+    | simplifiedE1 == (Num 0) || simplifiedE2 == (Num 0) = (Num 0)
+    | simplifiedE1 == (Num 1)                            = simplifiedE2
+    | simplifiedE2 == (Num 1)                            = simplifiedE1
+    | otherwise                                          = simplifiedE1 `mul` 
+                                                           simplifiedE2
+  where simplifiedE1 = simplify e1
+        simplifiedE2 = simplify e2
+
+simplify (Sin e) = Sin (simplify e)
+simplify (Cos e) = Cos (simplify e)
+simplify (Num v) = (Num v)
+simplify (X)     = (X)
+
+-- Simplification correctness property
+prop_simplify_correctness :: Expr -> Double -> Bool
+prop_simplify_correctness expr xVal =
+  eval expr xVal == eval (simplify expr) xVal
+
+-- Helper function to validate that an expression is fully simplified
+isSimplified :: Expr -> Bool
+isSimplified (Add (Num 0) _) = False  -- No addition with 0
+isSimplified (Add _ (Num 0)) = False  -- No addition with 0
+isSimplified (Mul (Num 0) _) = False  -- No multiplication by 0
+isSimplified (Mul _ (Num 0)) = False  -- No multiplication by 0
+isSimplified (Mul (Num 1) _) = False  -- No multiplication by 1
+isSimplified (Mul _ (Num 1)) = False  -- No multiplication by 0
+isSimplified (Sin (Num _))   = False  -- No sin(num)
+isSimplified (Cos (Num _))   = False  -- No cos(num)
+isSimplified (Add e1 e2)     = isSimplified e1 && isSimplified e2
+isSimplified (Mul e1 e2)     = isSimplified e1 && isSimplified e2
+isSimplified (Sin e)         = isSimplified e
+isSimplified (Cos e)         = isSimplified e
+isSimplified (Num _)         = True   -- Numeric constants are fine
+isSimplified X               = True   -- Variable is fine
+
+-- Simplified expressions should have no redundancies
+prop_simplify_no_redundancies :: Expr -> Bool
+prop_simplify_no_redundancies expr =
+  isSimplified (simplify expr)
+
+-- quickCheck prop_simplify_correctness
+-- quickCheck prop_simplify_no_redundancies
+
+
+
+-- G
+differentiate :: Expr -> Expr
+differentiate e =  simplify $ differentiateCompute e
+
+differentiateCompute :: Expr -> Expr
+differentiateCompute (Add e1 e2) = ((differentiate e1) `add` (differentiate e2))
+differentiateCompute (Mul e1 e2) = (((differentiate e1) `mul` e2) `add` 
+                                 (e1 `mul` (differentiate e2)))
+differentiateCompute (Sin e)     = ((differentiate e) `mul` (Cos e))
+differentiateCompute (Cos e)     = (((differentiate e) `mul` (Sin e)) `mul` (Num (-1.0)))
+differentiateCompute (Num v)     = (Num 0)
+differentiateCompute (X)         = (Num 1)
+
+
+
+
+
+
+  
+
 -- tests : 
 ex1 = cosC (sinC (x `add` (num 3.0)))
 ex2 = ((num 3) `add` (num 4)) `mul` (num 10)
 ex3 = (num 1) `mul` (num 2)
 
+-- tests for simplify:
+exs :: [Expr]
+exs = [ (num 1) `mul` (num 0),             -- 0
+        (num 0) `mul` (num 2),             -- 0
+        (num 1) `add` (num 0),             -- 1
+        (num 0) `add` (num 1),             -- 1
+        (num 3) `mul` (num 4),             -- itself
+        (num 0) `add` (num 0),             -- 0
+        (x `add` (num 0)),                 -- itself
+        (num 0) `mul` x,                   -- 0
+        sinC (num 0),                      -- Sine of zero (result should remain sinC (num 0) unless further simplifications are defined)
+        cosC (num 0),                      -- Cosine of zero (result should remain cosC (num 0) unless further simplifications are defined)
+        (x `add` (num 2)) `mul` (num 0),   -- Multiplication of an expression by zero (result should be 0)
+        sinC (x `add` (num 0)),             -- Sine of an addition with zero (result should simplify the addition first)
+        sinC (num (15.3)),
+        cosC (num (15.3))
+      ]
