@@ -1,0 +1,1 @@
+Question "Is this person from Europe?" (Question "Is this person a scientist?" (Answer "Marie Curie") (Question "Is this person french ?" (Answer "Emmanuel Macron") (Answer "Queen Elisabeth II"))) (Question "Is this person white ?" (Answer "Donald Trump") (Answer "Barack Obama"))
